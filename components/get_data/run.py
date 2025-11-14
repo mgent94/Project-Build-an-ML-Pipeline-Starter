@@ -17,7 +17,12 @@ logger = logging.getLogger()
 def go(args):
 
     run = wandb.init(job_type="download_file")
-    run.config.update(args)
+    # If artifact_description was parsed as multiple tokens, join them into a single string
+    if hasattr(args, "artifact_description") and isinstance(args.artifact_description, list):
+        args.artifact_description = " ".join(args.artifact_description)
+
+    # Convert Namespace to dict for wandb config
+    run.config.update(vars(args))
 
     logger.info(f"Returning sample {args.sample}")
     logger.info(f"Uploading {args.artifact_name} to Weights & Biases")
@@ -40,7 +45,10 @@ if __name__ == "__main__":
     parser.add_argument("--artifact_type", type=str, required=True, help="Output artifact type.")
 
     parser.add_argument(
-        "--artifact_description", type=str, required=True, help="A brief description of this artifact"
+        "--artifact_description",
+        nargs="+",
+        required=True,
+        help="A brief description of this artifact (may contain spaces)",
     )
 
     args = parser.parse_args()
