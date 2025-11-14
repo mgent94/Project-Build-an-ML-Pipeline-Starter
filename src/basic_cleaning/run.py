@@ -15,7 +15,8 @@ logger = logging.getLogger()
 def go(args):
 
     run = wandb.init(job_type="basic_cleaning")
-    run.config.update(args)
+    # Convert Namespace to dict for wandb config
+    run.config.update(vars(args))
 
     # Download input artifact. This will also log that this script is using this
     
@@ -52,45 +53,45 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="A very basic data cleaning")
   
     parser.add_argument(
-        "--input_artifact", 
-        type = ## INSERT TYPE HERE: str, float or int,
-        help = ## INSERT DESCRIPTION HERE,
-        required = True
+        "--input_artifact",
+        type=str,
+        help="W&B artifact reference for the input dataset (e.g. 'owner/dataset:version')",
+        required=True,
     )
 
     parser.add_argument(
-        "--output_artifact", 
-        type = ## INSERT TYPE HERE: str, float or int,
-        help = ## INSERT DESCRIPTION HERE,
-        required = True
+        "--output_artifact",
+        type=str,
+        help="Name for the output artifact to create (e.g. 'clean_sample.csv')",
+        required=True,
     )
 
     parser.add_argument(
-        "--output_type", 
-        type = ## INSERT TYPE HERE: str, float or int,
-        help = ## INSERT DESCRIPTION HERE,
-        required = True
+        "--output_type",
+        type=str,
+        help="Type for the output artifact (e.g. 'cleaned_data')",
+        required=True,
     )
 
     parser.add_argument(
-        "--output_description", 
-        type = ## INSERT TYPE HERE: str, float or int,
-        help = ## INSERT DESCRIPTION HERE,
-        required = True
+        "--output_description",
+        type=str,
+        help="A short description for the output artifact",
+        required=True,
     )
 
     parser.add_argument(
-        "--min_price", 
-        type = ## INSERT TYPE HERE: str, float or int,
-        help = ## INSERT DESCRIPTION HERE,
-        required = True
+        "--min_price",
+        type=float,
+        help="Minimum price to keep when filtering outliers",
+        required=True,
     )
 
     parser.add_argument(
         "--max_price",
-        type = ## INSERT TYPE HERE: str, float or int,
-        help = ## INSERT DESCRIPTION HERE,
-        required = True
+        type=float,
+        help="Maximum price to keep when filtering outliers",
+        required=True,
     )
 
 
