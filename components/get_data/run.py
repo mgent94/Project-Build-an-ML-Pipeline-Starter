@@ -5,7 +5,7 @@ This script download a URL to a local destination
 import argparse
 import logging
 import os
-
+import pathlib, tempfile
 import wandb
 
 from wandb_utils.log_artifact import log_artifact
@@ -16,23 +16,35 @@ logger = logging.getLogger()
 
 def go(args):
 
-    run = wandb.init(job_type="download_file")
-    # If artifact_description was parsed as multiple tokens, join them into a single string
-    if hasattr(args, "artifact_description") and isinstance(args.artifact_description, list):
-        args.artifact_description = " ".join(args.artifact_description)
+    # # Derive the base name of the file from the URL
+    # basename = pathlib.Path(args.file_url).name.split("?")[0].split("#")[0]
 
-    # Convert Namespace to dict for wandb config
-    run.config.update(vars(args))
+    # # Download file, streaming so we can download files larger than
+    # # the available memory. We use a named temporary file that gets
+    # # destroyed at the end of the context, so we don't leave anything
+    # # behind and the file gets removed even in case of errors
 
-    logger.info(f"Returning sample {args.sample}")
-    logger.info(f"Uploading {args.artifact_name} to Weights & Biases")
-    log_artifact(
-        args.artifact_name,
-        args.artifact_type,
-        args.artifact_description,
-        os.path.join("data", args.sample),
-        run,
-    )
+    # logger.info(f"Downloading {args.file_url} ...")
+    # with tempfile.NamedTemporaryFile(mode='wb+', delete=False) as fp:
+    #     tmp_path = fp.name    
+
+    with wandb.init(job_type="download_file") as run:
+        # If artifact_description was parsed as multiple tokens, join them into a single string
+        if hasattr(args, "artifact_description") and isinstance(args.artifact_description, list):
+            args.artifact_description = " ".join(args.artifact_description)
+
+        # Convert Namespace to dict for wandb config
+        run.config.update(vars(args))
+        
+        logger.info(f"Returning sample {args.sample}")
+        logger.info(f"Uploading {args.artifact_name} to Weights & Biases")
+        log_artifact(
+            args.artifact_name,
+            args.artifact_type,
+            args.artifact_description,
+            os.path.join("data", args.sample),
+            run,
+        )
 
 
 if __name__ == "__main__":
