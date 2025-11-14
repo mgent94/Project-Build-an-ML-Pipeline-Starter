@@ -13,7 +13,6 @@ dependencies:
   - scikit-learn=1.7.2
   - scipy=1.16.3
   - pyarrow=21.0.0
-  - pyyaml
   - pip:
       - alembic==1.17.1
       - annotated-doc==0.0.4
