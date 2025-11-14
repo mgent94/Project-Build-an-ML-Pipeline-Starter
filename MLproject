@@ -15,4 +15,4 @@ entry_points:
         type: str
         default: ''
 
-    command: "python main.py main.steps=\\'{steps}\\' $(echo {hydra_options})"
+    command: "python run_mlflow.py {steps} \"{hydra_options}\""
