@@ -4,6 +4,7 @@ This script splits the provided dataframe in test and remainder
 """
 import argparse
 import logging
+import os
 import pandas as pd
 import wandb
 import tempfile
@@ -16,13 +17,20 @@ logger = logging.getLogger()
 
 def go(args):
 
-    run = wandb.init(job_type="train_val_test_split")
+    run = wandb.init(project="nyc_airbnb", job_type="train_val_test_split")
     run.config.update(args)
 
     # Download input artifact. This will also note that this script is using this
     # particular version of the artifact
     logger.info(f"Fetching artifact {args.input}")
-    artifact_local_path = run.use_artifact(args.input).file()
+    artifact = run.use_artifact(args.input)
+    artifact_dir = artifact.download()
+    
+    # Find the CSV file in the downloaded artifact directory
+    csv_files = [f for f in os.listdir(artifact_dir) if f.endswith('.csv')]
+    if not csv_files:
+        raise FileNotFoundError(f"No CSV files found in artifact at {artifact_dir}")
+    artifact_local_path = os.path.join(artifact_dir, csv_files[0])
 
     df = pd.read_csv(artifact_local_path)
 
@@ -37,17 +45,20 @@ def go(args):
     # Save to output files
     for df, k in zip([trainval, test], ['trainval', 'test']):
         logger.info(f"Uploading {k}_data.csv dataset")
-        with tempfile.NamedTemporaryFile("w") as fp:
+        with tempfile.NamedTemporaryFile("w", delete=False, suffix=".csv") as fp:
+            temp_path = fp.name
+            df.to_csv(temp_path, index=False)
 
-            df.to_csv(fp.name, index=False)
-
-            log_artifact(
-                f"{k}_data.csv",
-                f"{k}_data",
-                f"{k} split of dataset",
-                fp.name,
-                run,
-            )
+        log_artifact(
+            f"{k}_data.csv",
+            f"{k}_data",
+            f"{k} split of dataset",
+            temp_path,
+            run,
+        )
+        
+        # Clean up temporary file
+        os.unlink(temp_path)
 
 
 if __name__ == "__main__":

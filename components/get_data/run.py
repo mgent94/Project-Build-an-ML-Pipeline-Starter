@@ -28,7 +28,7 @@ def go(args):
     # with tempfile.NamedTemporaryFile(mode='wb+', delete=False) as fp:
     #     tmp_path = fp.name    
 
-    with wandb.init(job_type="download_file") as run:
+    with wandb.init(project="nyc_airbnb", job_type="download_file") as run:
         # If artifact_description was parsed as multiple tokens, join them into a single string
         if hasattr(args, "artifact_description") and isinstance(args.artifact_description, list):
             args.artifact_description = " ".join(args.artifact_description)
@@ -38,13 +38,27 @@ def go(args):
         
         logger.info(f"Returning sample {args.sample}")
         logger.info(f"Uploading {args.artifact_name} to Weights & Biases")
+        
+        # Get the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        data_file = os.path.join(script_dir, "data", args.sample)
+        
+        logger.info(f"Data file path: {data_file}")
+        if not os.path.exists(data_file):
+            logger.error(f"Data file not found: {data_file}")
+            raise FileNotFoundError(f"Data file not found: {data_file}")
+        
+        logger.info(f"Data file exists, size: {os.path.getsize(data_file)} bytes")
+        
         log_artifact(
             args.artifact_name,
             args.artifact_type,
             args.artifact_description,
-            os.path.join("data", args.sample),
+            data_file,
             run,
         )
+        
+        logger.info(f"Successfully uploaded artifact {args.artifact_name}")
 
 
 if __name__ == "__main__":

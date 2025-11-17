@@ -40,7 +40,7 @@ logger = logging.getLogger()
 
 def go(args):
 
-    run = wandb.init(job_type="train_random_forest")
+    run = wandb.init(project="nyc_airbnb", job_type="train_random_forest")
     run.config.update(args)
 
     # Get the Random Forest configuration and update W&B
@@ -51,9 +51,17 @@ def go(args):
     # Fix the random seed for the Random Forest, so we get reproducible results
     rf_config['random_state'] = args.random_seed
 
-    # Use run.use_artifact(...).file() to get the train and validation artifact
+    # Use run.use_artifact(...).download() to get the train and validation artifact
     # and save the returned path in train_local_path
-    trainval_local_path = run.use_artifact(args.trainval_artifact).file()
+    trainval_artifact = run.use_artifact(args.trainval_artifact)
+    trainval_artifact_dir = trainval_artifact.download()
+    
+    # Find the CSV file in the downloaded artifact directory
+    import os as os_module
+    csv_files = [f for f in os_module.listdir(trainval_artifact_dir) if f.endswith('.csv')]
+    if not csv_files:
+        raise FileNotFoundError(f"No CSV files found in artifact at {trainval_artifact_dir}")
+    trainval_local_path = os_module.path.join(trainval_artifact_dir, csv_files[0])
    
     X = pd.read_csv(trainval_local_path)
     y = X.pop("price")  # this removes the column "price" from X and puts it into y

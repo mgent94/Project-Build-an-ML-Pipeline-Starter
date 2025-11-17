@@ -1,5 +1,8 @@
 import wandb
 import mlflow
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def log_artifact(artifact_name, artifact_type, artifact_description, filename, wandb_run):
@@ -21,8 +24,11 @@ def log_artifact(artifact_name, artifact_type, artifact_description, filename, w
         description=artifact_description,
     )
     artifact.add_file(filename)
+    logger.info(f"Logging artifact {artifact_name} from file {filename}")
     wandb_run.log_artifact(artifact)
     # We need to call this .wait() method before we can use the
     # version below. This will wait until the artifact is loaded into W&B and a
     # version is assigned
+    logger.info(f"Waiting for artifact {artifact_name} to be processed...")
     artifact.wait()
+    logger.info(f"Artifact {artifact_name} successfully processed and uploaded")

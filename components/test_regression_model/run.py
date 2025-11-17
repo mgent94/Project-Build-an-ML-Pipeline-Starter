@@ -18,7 +18,7 @@ logger = logging.getLogger()
 
 def go(args):
 
-    run = wandb.init(job_type="test_model")
+    run = wandb.init(project="nyc_airbnb", job_type="test_model")
     run.config.update(args)
 
     logger.info("Downloading artifacts")
@@ -27,7 +27,15 @@ def go(args):
     model_local_path = run.use_artifact(args.mlflow_model).download()
 
     # Download test dataset
-    test_dataset_path = run.use_artifact(args.test_dataset).file()
+    test_dataset_artifact = run.use_artifact(args.test_dataset)
+    test_dataset_dir = test_dataset_artifact.download()
+    
+    # Find the CSV file in the downloaded artifact directory
+    import os
+    csv_files = [f for f in os.listdir(test_dataset_dir) if f.endswith('.csv')]
+    if not csv_files:
+        raise FileNotFoundError(f"No CSV files found in artifact at {test_dataset_dir}")
+    test_dataset_path = os.path.join(test_dataset_dir, csv_files[0])
 
     # Read test dataset
     X_test = pd.read_csv(test_dataset_path)

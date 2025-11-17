@@ -14,15 +14,33 @@ logger = logging.getLogger()
 # DO NOT MODIFY
 def go(args):
 
-    run = wandb.init(job_type="basic_cleaning")
+    # If output_description was parsed as multiple tokens, join them into a single string
+    if isinstance(args.output_description, list):
+        args.output_description = " ".join(args.output_description)
+
+    run = wandb.init(project="nyc_airbnb", group="cleaning", save_code=True)
     # Convert Namespace to dict for wandb config
     run.config.update(vars(args))
-
-    # Download input artifact. This will also log that this script is using this
     
-    run = wandb.init(project="nyc_airbnb", group="cleaning", save_code=True)
-    artifact_local_path = run.use_artifact(args.input_artifact).file()
-    df = pd.read_csv(artifact_local_path)
+    logger.info(f"Fetching artifact: {args.input_artifact}")
+    artifact = run.use_artifact(args.input_artifact)
+    logger.info(f"Artifact fetched: {artifact}")
+    logger.info(f"Artifact type: {type(artifact)}")
+    logger.info(f"Downloading artifact to local path...")
+    artifact_local_path = artifact.download()
+    logger.info(f"Artifact downloaded to: {artifact_local_path}")
+    
+    # Find the CSV file in the downloaded artifact directory
+    import os
+    csv_files = [f for f in os.listdir(artifact_local_path) if f.endswith('.csv')]
+    if not csv_files:
+        raise FileNotFoundError(f"No CSV files found in artifact at {artifact_local_path}")
+    if len(csv_files) > 1:
+        logger.warning(f"Multiple CSV files found, using first one: {csv_files[0]}")
+    
+    artifact_file = os.path.join(artifact_local_path, csv_files[0])
+    logger.info(f"Reading CSV from: {artifact_file}")
+    df = pd.read_csv(artifact_file)
     # Drop outliers
     min_price = args.min_price
     max_price = args.max_price
@@ -73,6 +91,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--output_description",
+        nargs="+",
         type=str,
         help="A short description for the output artifact",
         required=True,
