@@ -96,16 +96,17 @@ def go(config: DictConfig):
 
         if "train_random_forest" in active_steps:
 
-            # NOTE: we need to serialize the random forest configuration into JSON
-            rf_config = os.path.abspath("rf_config.json")
-            with open(rf_config, "w+") as fp:
+            # Path to the train_random_forest project
+            train_rf_path = os.path.join(root_path, "src", "train_random_forest")
+
+            # Create rf_config.json *inside* that project directory
+            rf_config_path = os.path.join(train_rf_path, "rf_config.json")
+            with open(rf_config_path, "w+") as fp:
                 json.dump(dict(config["modeling"]["random_forest"].items()), fp)  # DO NOT TOUCH
 
-            # NOTE: use the rf_config we just created as the rf_config parameter for the train_random_forest
-            # step
-
+            # Now run the step, referring to it just as "rf_config.json"
             _ = mlflow.run(
-                os.path.join(root_path, "src", "train_random_forest"),
+                train_rf_path,
                 "main",
                 env_manager="conda",
                 parameters={
@@ -113,7 +114,7 @@ def go(config: DictConfig):
                     "val_size": config["modeling"]["val_size"],
                     "random_seed": config["modeling"]["random_seed"],
                     "stratify_by": config["modeling"]["stratify_by"],
-                    "rf_config": "rf_config.json",
+                    "rf_config": "rf_config.json",  # now it’s in the CWD of that project
                     "max_tfidf_features": config["modeling"]["max_tfidf_features"],
                     "output_artifact": "trained_random_forest.csv",
                 },

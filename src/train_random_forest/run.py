@@ -67,9 +67,23 @@ def go(args):
     y = X.pop("price")  # this removes the column "price" from X and puts it into y
 
     logger.info(f"Minimum price: {y.min()}, Maximum price: {y.max()}")
+    
+    
+    # Decide whether to stratify
+    stratify_col = args.stratify_by
+    if stratify_col is None or str(stratify_col).lower() == "none":
+        stratify_arg = None
+    else:
+        if stratify_col not in X.columns:
+            raise ValueError(
+                f"Stratify column '{stratify_col}' not found in data. "
+                f"Available columns: {list(X.columns)}"
+            )
+        stratify_arg = X[stratify_col]
+
 
     X_train, X_val, y_train, y_val = train_test_split(
-        X, y, test_size=args.val_size, stratify=X[args.stratify_by], random_state=args.random_seed
+        X, y, test_size=args.val_size, stratify=stratify_arg, random_state=args.random_seed
     )
 
     logger.info("Preparing sklearn pipeline")
@@ -79,10 +93,7 @@ def go(args):
     # Then fit it to the X_train, y_train data
     logger.info("Fitting")
 
-    ######################################
-    # Fit the pipeline sk_pipe by calling the .fit method on X_train and y_train
-    # YOUR CODE HERE
-    ######################################
+    sk_pipe.fit(X_train, y_train)
 
     # Compute r2 and MAE
     logger.info("Scoring")
@@ -96,25 +107,26 @@ def go(args):
 
     logger.info("Exporting model")
 
-    # Save model package in the MLFlow sklearn format
-    if os.path.exists("random_forest_dir"):
-        shutil.rmtree("random_forest_dir")
+    random_forest_dir = "random_forest_dir"
 
-    ######################################
+    # Save model package in the MLFlow sklearn format
+    if os.path.exists(random_forest_dir):
+        shutil.rmtree(random_forest_dir)
+
     # Save the sk_pipe pipeline as a mlflow.sklearn model in the directory "random_forest_dir"
     # HINT: use mlflow.sklearn.save_model
     mlflow.sklearn.save_model(
-        # YOUR CODE HERE
+        sk_model=sk_pipe,
+        path=random_forest_dir,
         input_example = X_train.iloc[:5]
     )
-    ######################################
 
 
     # Upload the model we just exported to W&B
     artifact = wandb.Artifact(
         args.output_artifact,
         type = 'model_export',
-        description = 'Trained ranfom forest artifact',
+        description = 'Trained random forest artifact',
         metadata = rf_config
     )
     artifact.add_dir('random_forest_dir')
@@ -123,12 +135,10 @@ def go(args):
     # Plot feature importance
     fig_feat_imp = plot_feature_importance(sk_pipe, processed_features)
 
-    ######################################
     # Here we save variable r_squared under the "r2" key
     run.summary['r2'] = r_squared
     # Now save the variable mae under the key "mae".
-    # YOUR CODE HERE
-    ######################################
+    run.summary["mae"] = mae
 
     # Upload to W&B the feture importance visualization
     run.log(
@@ -165,14 +175,14 @@ def get_inference_pipeline(rf_config, max_tfidf_features):
     # (nor during training). That is not true for neighbourhood_group
     ordinal_categorical_preproc = OrdinalEncoder()
 
-    ######################################
+    
     # Build a pipeline with two steps:
     # 1 - A SimpleImputer(strategy="most_frequent") to impute missing values
     # 2 - A OneHotEncoder() step to encode the variable
     non_ordinal_categorical_preproc = make_pipeline(
-        # YOUR CODE HERE
+        SimpleImputer(strategy="most_frequent"),
+        OneHotEncoder(handle_unknown="ignore")
     )
-    ######################################
 
     # Let's impute the numerical columns to make sure we can handle missing values
     # (note that we do not scale because the RF algorithm does not need that)
@@ -232,8 +242,9 @@ def get_inference_pipeline(rf_config, max_tfidf_features):
     # HINT: Use the explicit Pipeline constructor so you can assign the names to the steps, do not use make_pipeline
 
     sk_pipe = Pipeline(
-        steps =[
-        # YOUR CODE HERE
+        steps=[
+            ("preprocessor", preprocessor),
+            ("random_forest", random_forest),
         ]
     )
 
